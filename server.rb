@@ -1,11 +1,8 @@
 require 'goliath'
 require 'nokogiri'
 require "zlib"
-require "time"  # for Time.httpdate
 require 'rack'
 require 'stringio'
-
-Dir[File.dirname(__FILE__) + '/lib/*.rb'].each {|file| require file }
 
 class Server < Goliath::API
   # use ::Rack::Deflater, if: proc { |env| env["PATH_INFO"] =~ /^\/gziped\// }
