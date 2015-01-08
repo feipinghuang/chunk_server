@@ -48,6 +48,8 @@ class Server < Goliath::API
       chunk(env, $1)
     when /^\/gziped\/(.*\.html)/
       gzip(env, $1)
+    when /^\/gziped_chunked\/(.*\.html)/
+      chunk(env, $1)
     end
 
   end
