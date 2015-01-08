@@ -5,10 +5,14 @@ class FileSystem
     @uri  = uri
   end
 
-  def get
+  def get_chunked
     open(root_path + @uri, "rb") do |file|
       yield file.read(CHUNKSIZE) until file.eof?
     end
+  end
+
+  def get
+    File.read(root_path + @uri)
   end
 
   def root_path

@@ -1,7 +1,7 @@
 require 'goliath'
 require 'nokogiri'
 
-class Chunk < Goliath::API
+class Chunked < Goliath::API
   def on_close(env)
     env.logger.info "Connection closed."
   end
@@ -9,7 +9,7 @@ class Chunk < Goliath::API
   def response(env)
     path = env["PATH_INFO"]
     operation = proc do
-      FileSystem.new(path).get do |chunk|
+      FileSystem.new(path).get_chunked do |chunk|
         env.chunked_stream_send(chunk)
       end
     end
@@ -20,7 +20,7 @@ class Chunk < Goliath::API
 
     EM.defer operation, callback
 
-    headers = { 'Content-Type' => 'text/plain', 'X-Stream' => 'Goliath' }
+    headers = { 'Content-Type' => 'text/html', 'X-Stream' => 'Goliath' }
     chunked_streaming_response(200, headers)
   end
 end
