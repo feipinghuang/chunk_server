@@ -24,10 +24,9 @@ class Server < Goliath::API
 
   def chunk(env, path)
     operation = proc do
-      open(views_path + path, "rb") do |file|
-        until file.eof?
-          env.chunked_stream_send(file.read(100))
-        end
+      split_html(File.read(views_path + path)).each do |chunk|
+        env.chunked_stream_send(chunk)
+        sleep 0.5
       end
     end
 
@@ -47,16 +46,13 @@ class Server < Goliath::API
     gzip = Zlib::GzipWriter.new(io)
 
     operation = proc do
-      open(views_path + path, "rb") do |file|
-        until file.eof?
-          content = file.read(100)
-          content = compress(gzip, io, content)
-          env.chunked_stream_send(content)
-          io.truncate(0)
-          io.rewind
-        end
-        gzip.close
+      split_html(File.read(views_path + path)).each do |chunk|
+        env.chunked_stream_send(compress(gzip, io, chunk))
+        io.truncate(0)
+        io.rewind
+        sleep 0.5
       end
+      gzip.close
     end
 
     callback = proc do |result|
@@ -90,5 +86,16 @@ class Server < Goliath::API
     gzip.write(data)
     gzip.flush
     io.string.force_encoding('binary')
+  end
+
+  def split_html(html)
+    doc = Nokogiri::HTML(html)
+    splited = []
+    bf = 0
+    doc.css('.split').each_with_index do |split, index|
+      splited << html[bf...(bf=html.index(split.to_s))]
+    end
+    splited << html[bf..-1]
+    splited
   end
 end
