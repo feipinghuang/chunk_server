@@ -23,13 +23,14 @@ class Server < Goliath::API
     when /^\/gziped_chunked\/(.*\.html)/
       gzip_chunk(env, $1)
     end
-
   end
 
   def chunk(env, path)
     operation = proc do
-      FileSystem.new(path).get_chunked do |chunk|
-        env.chunked_stream_send(chunk)
+      open(views_path + path, "rb") do |file|
+        until file.eof?
+          env.chunked_stream_send(file.read(100))
+        end
       end
     end
 
@@ -44,9 +45,20 @@ class Server < Goliath::API
   end
 
   def gzip_chunk(env, path)
+    io = StringIO.new
+    io.binmode
+    gzip = Zlib::GzipWriter.new(io)
+
     operation = proc do
-      FileSystem.new(path).get_chunked do |chunk|
-        env.chunked_stream_send(gzip_string(chunk))
+      open(views_path + path, "rb") do |file|
+        until file.eof?
+          content = file.read(100)
+          content = compress(gzip, io, content)
+          env.chunked_stream_send(content)
+          io.truncate(0)
+          io.rewind
+        end
+        gzip.close
       end
     end
 
@@ -56,22 +68,30 @@ class Server < Goliath::API
 
     EM.defer operation, callback
 
-    headers = { 'Content-Type' => 'text/html', 'Content-Encoding' => "gzip", 'X-Stream' => 'Goliath' }
+    headers = { 'Content-Type' => 'text/html',
+                'Content-Encoding' => "gzip",
+                'X-Stream' => 'Goliath' }
     chunked_streaming_response(200, headers)
   end
 
   def gzip(env, path)
+    io = StringIO.new
+    io.binmode
+    gzip = Zlib::GzipWriter.new(io)
     headers = { 'Content-Type' => 'text/html', 'Content-Encoding' => "gzip", 'X-Stream' => 'Goliath' }
 
-    [200, headers, [gzip_string(FileSystem.new(path).get)]]
+    [200, headers, [compress(gzip, io, FileSystem.new(path).get)]]
+  ensure
+    gzip.close
   end
 
-  def gzip_string(str)
-    s = StringIO.new("")
-    gzip = ::Zlib::GzipWriter.new(s)
-    gzip.write(str)
+  def views_path
+    File.dirname(__FILE__) + '/views/'
+  end
+
+  def compress(gzip, io, data)
+    gzip.write(data)
     gzip.flush
-    gzip.close
-    s.string
+    io.string.force_encoding('binary')
   end
 end

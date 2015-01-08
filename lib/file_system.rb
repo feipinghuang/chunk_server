@@ -1,3 +1,5 @@
+require "zlib"
+require 'stringio'
 class FileSystem
   CHUNKSIZE = 100
 
@@ -6,7 +8,6 @@ class FileSystem
   end
 
   def get_chunked
-    puts "#{root_path + @uri}"
     open(root_path + @uri, "rb") do |file|
       yield file.read(CHUNKSIZE) until file.eof?
     end
@@ -18,5 +19,14 @@ class FileSystem
 
   def root_path
     File.dirname(__FILE__) + '/../views/'
+  end
+
+  def gzip_string(str)
+    s = StringIO.new("")
+    gzip = ::Zlib::GzipWriter.new(s)
+    gzip.write(str)
+    gzip.flush
+    gzip.close
+    s.string
   end
 end
