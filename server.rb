@@ -15,6 +15,7 @@ router = Rack::Builder.new do
 
   map '/gziped' do
     use ::Rack::Deflater
+    use ::Rack::ContentLength
     use Goliath::Rack::Params
     run Gziped.new
   end
