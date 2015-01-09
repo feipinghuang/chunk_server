@@ -94,15 +94,23 @@ class Server < Goliath::API
     io.string.force_encoding('binary')
   end
 
+  # def split_html(html)
+  #   doc = Nokogiri::HTML(html)
+  #   splited = []
+  #   bf = 0
+  #   b = doc.css('.split')
+  #   puts html.length
+  #   puts b.length
+  #   b.each_with_index do |split, index|
+  #     puts bf
+  #     splited << html[bf...(bf=html.index(split.to_s))]
+  #   end
+  #   splited << html[bf..-1]
+  #   splited
+  # end
+
   def split_html(html)
-    doc = Nokogiri::HTML(html)
-    splited = []
-    bf = 0
-    doc.css('.split').each_with_index do |split, index|
-      splited << html[bf...(bf=html.index(split.to_s))]
-    end
-    splited << html[bf..-1]
-    splited
+    html.split("<split>")
   end
 
   def handle(path)
