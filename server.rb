@@ -110,7 +110,7 @@ class Server < Goliath::API
   # end
 
   def split_html(html)
-    html.split("<split>")
+    html.split("<!-- split -->")
   end
 
   def handle(path)
