@@ -14,17 +14,23 @@ class Server < Goliath::API
   def response(env)
     case env["PATH_INFO"]
     when /^\/chunked\/(.*\.html)/
-      chunk(env, $1)
+      handle(views_path($1)) { |path| chunk(env, path) }
     when /^\/gziped\/(.*\.html)/
-      gzip(env, $1)
+      handle(views_path($1)) { |path| gzip(env, path) }
     when /^\/gziped_chunked\/(.*\.html)/
-      gzip_chunk(env, $1)
+      handle(views_path($1)) { |path| gzip_chunk(env, path) }
+    when /^\/(.*\.html)/
+      handle(views_path($1)) { |path| ordinary(env, path) }
     end
+  end
+
+  def ordinary(env, path)
+    [200, {}, [File.read(path)]]
   end
 
   def chunk(env, path)
     operation = proc do
-      split_html(File.read(views_path + path)).each do |chunk|
+      split_html(File.read(path)).each do |chunk|
         env.chunked_stream_send(chunk)
         sleep 0.5
       end
@@ -46,7 +52,7 @@ class Server < Goliath::API
     gzip = Zlib::GzipWriter.new(io)
 
     operation = proc do
-      split_html(File.read(views_path + path)).each do |chunk|
+      split_html(File.read(path)).each do |chunk|
         env.chunked_stream_send(compress(gzip, io, chunk))
         io.truncate(0)
         io.rewind
@@ -73,13 +79,13 @@ class Server < Goliath::API
     gzip = Zlib::GzipWriter.new(io)
     headers = { 'Content-Type' => 'text/html', 'Content-Encoding' => "gzip", 'X-Stream' => 'Goliath' }
 
-    [200, headers, [compress(gzip, io, FileSystem.new(path).get)]]
+    [200, headers, [compress(gzip, io, File.read(path))]]
   ensure
     gzip.close
   end
 
-  def views_path
-    File.dirname(__FILE__) + '/views/'
+  def views_path(path)
+    File.dirname(__FILE__) + '/views/' + path
   end
 
   def compress(gzip, io, data)
@@ -97,5 +103,13 @@ class Server < Goliath::API
     end
     splited << html[bf..-1]
     splited
+  end
+
+  def handle(path)
+    if File.exist?(path)
+      yield path
+    else
+      [404, {}]
+    end
   end
 end
