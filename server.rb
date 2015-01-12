@@ -7,7 +7,7 @@ require 'erb'
 
 class Server < Goliath::API
   # use ::Rack::Deflater, if: proc { |env| env["PATH_INFO"] =~ /^\/gziped\// }
-
+  use Goliath::Rack::Params
   use(Rack::Static,                     # render static files from ./public
       :root => Goliath::Application.app_path("public"),
       :urls => ["/favicon.ico", '/stylesheets', '/javascripts', '/images'])
@@ -100,10 +100,10 @@ class Server < Goliath::API
     File.dirname(__FILE__) + '/views/' + path
   end
 
-  def render(path, options={})
+  def render(path)
     data = File.read(path)
     template = Tilt['erb'].new(nil, nil, {}){ data }
-    template.render self, options
+    template.render self
   end
 
   def compress(gzip, io, data)
