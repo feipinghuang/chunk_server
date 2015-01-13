@@ -43,8 +43,9 @@ class Server < Goliath::API
   end
 
   def chunk(env, path)
+    content=render(path)
     operation = proc do
-      split_html(render(path)).each do |chunk|
+      split_html(content).each do |chunk|
         env.chunked_stream_send(chunk)
       end
     end
@@ -63,9 +64,9 @@ class Server < Goliath::API
     io = StringIO.new
     io.binmode
     gzip = Zlib::GzipWriter.new(io)
-
+    content=render(path)
     operation = proc do
-      split_html(render(path)).each do |chunk|
+      split_html(content).each do |chunk|
         env.chunked_stream_send(compress(gzip, io, chunk))
         io.truncate(0)
         io.rewind
