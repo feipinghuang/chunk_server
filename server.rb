@@ -16,7 +16,14 @@ class Server < Goliath::API
   @@current_path = "/"
 
   def request_count
-    (@@request_count[@@current_path] += 1) % 10
+    @@request_count[@@current_path] % 10
+  end
+
+  def on_headers(env, headers)
+    heads = headers.select { |k, v| k.start_with?('Head-') }
+    bodys = headers.select { |k, v| k.start_with?('Body-') }
+    @head = heads.map { |k, v| "#{k.gsub('Head-', '')} = #{v}" }.join("\n")
+    @body = bodys.map { |k, v| "#{k.gsub('Body-', '')} = #{v}" }.join("\n")
   end
 
   def on_close(env)
@@ -24,7 +31,8 @@ class Server < Goliath::API
   end
 
   def response(env)
-    case @@current_path = env["PATH_INFO"]
+    @@request_count[@@current_path = env["PATH_INFO"]] += 1
+    case @@current_path
     when /^\/chunked\/(.*\.html)/
       handle(views_path($1)) { |path| chunk(env, path) }
     when /^\/gziped\/(.*\.html)/
